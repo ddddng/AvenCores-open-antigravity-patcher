@@ -10,7 +10,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -125,3 +125,52 @@ jobs:
           path: source/dist/*
           if-no-files-found: error
           retention-days: 14
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: version
+        shell: python
+        env:
+          BUILD_VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["BUILD_VERSION"].strip()
+          if not version:
+              current = Path("source/patcher/constants.py").read_text(encoding="utf-8")
+              match = re.search(r'^VERSION\\s*=\\s*"([^"]+)"', current, re.MULTILINE)
+              if not match:
+                  raise SystemExit("Could not read the current project version")
+              major, minor, patch = map(int, match.group(1).split("."))
+              version = f"{major}.{minor}.{patch + int(os.environ['BUILD_NUMBER'])}"
+          if not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", version):
+              raise SystemExit(f"Invalid version: {version!r}. Expected MAJOR.MINOR.PATCH.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\\n")
+
+      - name: Download all platform builds
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Open AG Patcher v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: release-assets/*
