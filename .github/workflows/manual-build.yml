@@ -38,6 +38,7 @@ jobs:
           python-version: "3.11"
 
       - name: Apply build version
+        id: version
         shell: python
         env:
           BUILD_VERSION: ${{ inputs.version }}
@@ -92,6 +93,8 @@ jobs:
               if count != 1:
                   raise SystemExit(f"Could not update {key} in source/version.txt")
           version_file.write_text(text, encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
           print(f"Building version {version}")
 
       - name: Install dependencies
@@ -118,7 +121,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Open_AG_Patcher_${{ matrix.platform }}_v${{ inputs.version }}
+          name: Open_AG_Patcher_${{ matrix.platform }}_v${{ steps.version.outputs.version }}
           path: source/dist/*
           if-no-files-found: error
           retention-days: 14
