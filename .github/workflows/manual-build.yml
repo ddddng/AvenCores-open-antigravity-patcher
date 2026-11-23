@@ -148,15 +148,15 @@ jobs:
           version = os.environ["BUILD_VERSION"].strip()
           if not version:
               current = Path("source/patcher/constants.py").read_text(encoding="utf-8")
-              match = re.search(r'^VERSION\\s*=\\s*"([^"]+)"', current, re.MULTILINE)
+              match = re.search(r'^VERSION\s*=\s*"([^"]+)"', current, re.MULTILINE)
               if not match:
                   raise SystemExit("Could not read the current project version")
               major, minor, patch = map(int, match.group(1).split("."))
               version = f"{major}.{minor}.{patch + int(os.environ['BUILD_NUMBER'])}"
-          if not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", version):
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
               raise SystemExit(f"Invalid version: {version!r}. Expected MAJOR.MINOR.PATCH.")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"version={version}\\n")
+              output.write(f"version={version}\n")
 
       - name: Download all platform builds
         uses: actions/download-artifact@v4
